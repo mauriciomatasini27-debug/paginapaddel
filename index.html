@@ -1,0 +1,1926 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Padel Listo - Reserva tu cancha</title>
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="La app definitiva para reservar canchas de pádel y conectar con jugadores. Tu próximo partido, a un solo tap.">
+    <meta name="theme-color" content="#BEF264">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Padel Listo">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'neon-lime': '#BEF264',
+                        'dark-primary': '#0D0D0D',
+                        'dark-secondary': '#1A1A1A',
+                    }
+                }
+            }
+        }   
+    </script>
+    <!-- Google Font: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <!-- Google Sign-In -->
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <!-- Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=TU_API_KEY_AQUI&callback=initMap&libraries=places" async defer></script>
+    <!-- QR Code Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+    <style>
+        /* Aplicamos la fuente base */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0D0D0D;
+            color: #F3F4F6;
+            scroll-behavior: smooth;
+        }
+        /* Clase para el efecto de gradiente en texto (como "Fitvise") */
+        .neon-text-gradient {
+            background: linear-gradient(to right, #BEF264, #a1d94f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        /* Efecto glow para elementos neon */
+        .glow-neon {
+            box-shadow: 0 0 20px rgba(190, 242, 100, 0.3);
+        }
+        .hover-glow:hover {
+            box-shadow: 0 0 30px rgba(190, 242, 100, 0.5);
+        }
+        /* Ajuste para los botones de la App Store/Google Play */
+        .store-button-img {
+            height: 56px;
+            width: auto;
+            max-width: 180px;
+            object-fit: contain;
+        }
+        /* Animaciones suaves */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.6s ease-out;
+        }
+        /* Animación para el modal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+        /* Widget de clima flotante */
+        #weather-widget-float {
+            animation: slideInRight 0.5s ease-out;
+        }
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        /* Responsive para mobile */
+        @media (max-width: 768px) {
+            #weather-widget-float {
+                top: 80px;
+                right: 1rem;
+                padding: 0.75rem;
+            }
+            #weather-widget-float #weather-icon-float {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-dark-primary/95 backdrop-blur-sm border-b border-gray-800">
+        <nav class="container mx-auto px-6 py-5 flex justify-between items-center">
+            <!-- Logo (Texto Estilizado) -->
+            <a href="#" class="text-3xl font-black tracking-tight">
+                Padel<span class="text-neon-lime">Listo</span>
+            </a>
+            <!-- Navegación (Desktop) -->
+            <div class="hidden md:flex space-x-8 items-center">
+                <a href="#about" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold">Sobre Nosotros</a>
+                <a href="#features" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold">Funcionalidades</a>
+                <a href="#testimonials" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold">Testimonios</a>
+                <a href="#clubs" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold">Para Clubes</a>
+                <!-- Botón de Login con Google -->
+                <button id="custom-google-signin" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold">
+                    Iniciar Sesión
+                </button>
+                <div id="google-signin-button" class="hidden"></div>
+                <!-- Perfil de Usuario (se muestra después del login) -->
+                <div id="user-profile" class="hidden flex items-center gap-3 bg-dark-secondary border border-gray-700 rounded-lg px-3 py-2 hover:border-neon-lime/60 transition-all duration-300 cursor-pointer">
+                    <img id="user-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full border-2 border-neon-lime/50">
+                    <div class="flex flex-col">
+                        <span id="user-name" class="text-white font-semibold text-sm"></span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-neon-lime text-xs font-bold">Nivel:</span>
+                            <span id="user-level" class="text-gray-400 text-xs">Principiante</span>
+                        </div>
+                    </div>
+                    <button id="logout-button" class="ml-2 text-gray-400 hover:text-neon-lime transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                    </button>
+                </div>
+                <a href="#download" class="bg-neon-lime text-dark-primary font-bold py-2.5 px-6 rounded-lg shadow-lg hover:shadow-neon-lime/50 transition-all duration-300 transform hover:scale-105 hover-glow">
+                    Descargar App
+                </a>
+            </div>
+            <!-- Botón de Menú (Mobile) -->
+            <div class="md:hidden flex items-center gap-4">
+                <!-- Botón de Login con Google (Mobile) -->
+                <button id="custom-google-signin-mobile" class="text-gray-300 hover:text-neon-lime transition-colors font-semibold text-sm">
+                    Login
+                </button>
+                <div id="google-signin-button-mobile" class="hidden"></div>
+                <!-- Perfil de Usuario Mobile (se muestra después del login) -->
+                <div id="user-profile-mobile" class="hidden flex items-center gap-2 bg-dark-secondary border border-gray-700 rounded-lg px-2 py-1.5">
+                    <img id="user-avatar-mobile" src="" alt="Avatar" class="w-8 h-8 rounded-full border-2 border-neon-lime/50">
+                    <div class="flex flex-col">
+                        <span id="user-name-mobile" class="text-white font-semibold text-xs"></span>
+                        <span id="user-level-mobile" class="text-neon-lime text-xs font-bold">Nivel: Principiante</span>
+                    </div>
+                </div>
+                <button class="text-gray-300 hover:text-neon-lime transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                    </svg>
+                </button>
+            </div>
+        </nav>
+    </header>
+
+    <!-- Widget de Clima Flotante -->
+    <div id="weather-widget-float" class="fixed top-24 right-4 md:right-6 z-40 bg-dark-secondary border-2 border-gray-800 rounded-xl px-4 py-3 shadow-2xl hover:border-neon-lime/60 transition-all duration-300 cursor-pointer hover-glow backdrop-blur-sm">
+        <div class="flex items-center gap-3">
+            <div id="weather-icon-float" class="text-3xl">🌤️</div>
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2">
+                    <span id="weather-temp-float" class="text-white font-bold text-base">--°</span>
+                    <span id="weather-condition-float" class="text-gray-400 text-xs hidden md:inline">Cargando...</span>
+                </div>
+                <div id="weather-forecast-float" class="text-neon-lime text-xs font-semibold">Próximas horas</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Video Horizontal Full Width -->
+    <div class="w-full mt-20 fade-in relative overflow-hidden">
+        <div class="absolute inset-0 bg-neon-lime/10 blur-3xl"></div>
+        <video 
+            autoplay 
+            loop 
+            muted 
+            playsinline
+            class="relative w-full h-auto"
+            style="max-height: 600px; object-fit: cover; display: block;">
+            <source src="paddel.mp4" type="video/mp4">
+            Tu navegador no soporta el elemento de video.
+        </video>
+    </div>
+
+    <!-- Hero Section -->
+    <main class="pt-12 md:pt-16">
+        <section class="container mx-auto px-6 mt-8 md:mt-16">
+            <div class="flex flex-col lg:flex-row items-center justify-between gap-12">
+                <!-- Columna de Texto -->
+                <div class="lg:w-1/2 text-center lg:text-left fade-in">
+                    <h1 class="text-5xl md:text-7xl font-black leading-tight tracking-tight">
+                        Tu Próximo Partido de Pádel,<br>
+                        <span class="neon-text-gradient">a un Solo Tap.</span>
+                    </h1>
+                    <p class="text-xl text-gray-300 mt-6 max-w-2xl mx-auto lg:mx-0 leading-relaxed">
+                        Encuentra canchas disponibles en tu ciudad, reserva en segundos y gestiona todos tus partidos. Padel Listo es la app definitiva para jugadores y clubes.
+                    </p>
+                    
+                    <!-- Buscador Interactivo de Canchas -->
+                    <div class="mt-8 max-w-2xl mx-auto lg:mx-0">
+                        <div class="relative">
+                            <div class="flex items-center bg-dark-secondary border-2 border-gray-800 rounded-xl shadow-xl hover:border-neon-lime/60 transition-all duration-300 focus-within:border-neon-lime focus-within:glow-neon">
+                                <!-- Icono de búsqueda -->
+                                <div class="pl-4 pr-2">
+                                    <svg class="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                                    </svg>
+                                </div>
+                                <!-- Input de búsqueda -->
+                                <input 
+                                    type="text" 
+                                    id="search-courts"
+                                    placeholder="Busca canchas por ciudad, club o ubicación..."
+                                    class="flex-1 bg-transparent text-white placeholder-gray-500 py-4 px-2 outline-none text-lg"
+                                    autocomplete="off"
+                                />
+                                <!-- Botón de búsqueda -->
+                                <button 
+                                    id="search-button"
+                                    class="bg-neon-lime text-dark-primary font-bold py-4 px-6 rounded-r-xl hover:bg-neon-lime/90 transition-all duration-300 transform hover:scale-105"
+                                >
+                                    Buscar
+                                </button>
+                            </div>
+                            <!-- Dropdown de sugerencias -->
+                            <div id="search-suggestions" class="hidden absolute z-10 w-full mt-2 bg-dark-secondary border-2 border-gray-800 rounded-xl shadow-2xl max-h-64 overflow-y-auto">
+                                <!-- Las sugerencias se agregarán dinámicamente -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex flex-col sm:flex-row justify-center lg:justify-start gap-4 mt-10">
+                        <a href="#download" class="bg-neon-lime text-dark-primary font-bold py-4 px-8 rounded-lg shadow-lg hover:shadow-neon-lime/50 transition-all duration-300 transform hover:scale-105 hover-glow text-center">
+                            Reservar Ahora
+                        </a>
+                        <a href="#clubs" class="border-2 border-gray-600 text-white font-bold py-4 px-8 rounded-lg hover:bg-gray-800 hover:border-neon-lime/50 transition-all duration-300 text-center">
+                            Soy un Club
+                        </a>
+                    </div>
+                </div>
+                <!-- Columna de Imagen (App Screenshot) -->
+                <div class="lg:w-1/2 mt-12 lg:mt-0 flex justify-center fade-in">
+                    <div class="relative">
+                        <div class="absolute inset-0 bg-neon-lime/20 blur-3xl rounded-full"></div>
+                        <img src="imagenpadel1.jpg" 
+                             alt="Vista previa de la app Padel Listo en un teléfono" 
+                             class="relative rounded-3xl shadow-2xl border-4 border-dark-secondary glow-neon transform hover:scale-105 transition-transform duration-300"
+                             style="width: 350px; height: 700px; object-fit: cover;"
+                             onerror="this.src='https://placehold.co/350x700/1A1A1A/BEF264?text=App+Preview'">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Grilla de Disponibilidad Visual -->
+        <section id="availability" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Disponibilidad en Tiempo Real</span>
+                <h2 class="text-4xl md:text-5xl font-black mt-2">
+                    Canchas Disponibles <span class="neon-text-gradient">Hoy</span>
+                </h2>
+                <p class="text-lg text-gray-400 mt-4">
+                    Selecciona una cancha y elige tu horario preferido
+                </p>
+            </div>
+
+            <!-- Tarjetas de Canchas -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+                <!-- Cancha 1 -->
+                <div class="bg-dark-secondary border-2 border-gray-800 rounded-2xl p-6 hover:border-neon-lime/60 transition-all duration-300 hover-glow" data-court="1">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-2xl font-black text-white mb-2">Cancha 1</h3>
+                            <!-- Ubicación -->
+                            <div class="flex items-start gap-2 mb-3 text-gray-400 text-sm">
+                                <svg class="w-4 h-4 text-neon-lime flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-white">Padel Club Premium</p>
+                                    <p>Av. Corrientes 1234, Buenos Aires</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 bg-neon-lime/20 text-neon-lime rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"></path>
+                                    </svg>
+                                    Techada
+                                </span>
+                                <span class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Césped
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Resumen de horarios disponibles -->
+                    <div class="mt-4 mb-3 p-3 bg-neon-lime/10 border border-neon-lime/30 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-neon-lime font-bold text-sm">5 horarios disponibles</span>
+                            </div>
+                            <span class="text-gray-400 text-xs">18:00 - 20:00</span>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-gray-400 text-sm mb-3">Selecciona un horario:</p>
+                        <div id="slots-court-1" class="grid grid-cols-2 gap-2">
+                            <!-- Slots se llenarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cancha 2 -->
+                <div class="bg-dark-secondary border-2 border-gray-800 rounded-2xl p-6 hover:border-neon-lime/60 transition-all duration-300 hover-glow" data-court="2">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-2xl font-black text-white mb-2">Cancha 2</h3>
+                            <!-- Ubicación -->
+                            <div class="flex items-start gap-2 mb-3 text-gray-400 text-sm">
+                                <svg class="w-4 h-4 text-neon-lime flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-white">Canchas Padel Express</p>
+                                    <p>Av. Colón 567, Córdoba</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 bg-gray-600/20 text-gray-400 rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                                    </svg>
+                                    Exterior
+                                </span>
+                                <span class="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Cristal
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Resumen de horarios disponibles -->
+                    <div class="mt-4 mb-3 p-3 bg-neon-lime/10 border border-neon-lime/30 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-neon-lime font-bold text-sm">4 horarios disponibles</span>
+                            </div>
+                            <span class="text-gray-400 text-xs">17:30 - 20:00</span>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-gray-400 text-sm mb-3">Selecciona un horario:</p>
+                        <div id="slots-court-2" class="grid grid-cols-2 gap-2">
+                            <!-- Slots se llenarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cancha 3 -->
+                <div class="bg-dark-secondary border-2 border-gray-800 rounded-2xl p-6 hover:border-neon-lime/60 transition-all duration-300 hover-glow" data-court="3">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="flex-1">
+                            <h3 class="text-2xl font-black text-white mb-2">Cancha 3</h3>
+                            <!-- Ubicación -->
+                            <div class="flex items-start gap-2 mb-3 text-gray-400 text-sm">
+                                <svg class="w-4 h-4 text-neon-lime flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                </svg>
+                                <div>
+                                    <p class="font-semibold text-white">Club de Pádel VIP</p>
+                                    <p>Av. Santa Fe 2000, Palermo, Buenos Aires</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="px-3 py-1 bg-neon-lime/20 text-neon-lime rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z"></path>
+                                    </svg>
+                                    Techada
+                                </span>
+                                <span class="px-3 py-1 bg-blue-500/20 text-blue-400 rounded-full text-xs font-semibold flex items-center gap-1">
+                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"></path>
+                                    </svg>
+                                    Césped
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Resumen de horarios disponibles -->
+                    <div class="mt-4 mb-3 p-3 bg-neon-lime/10 border border-neon-lime/30 rounded-lg">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <svg class="w-5 h-5 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <span class="text-neon-lime font-bold text-sm">6 horarios disponibles</span>
+                            </div>
+                            <span class="text-gray-400 text-xs">18:00 - 20:30</span>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-gray-400 text-sm mb-3">Selecciona un horario:</p>
+                        <div id="slots-court-3" class="grid grid-cols-2 gap-2">
+                            <!-- Slots se llenarán dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Mapa Interactivo de Clubes -->
+        <section id="map" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Encuentra Canchas Cerca de Ti</span>
+                <h2 class="text-4xl md:text-5xl font-black mt-2">
+                    Clubes en Tu <span class="neon-text-gradient">Ciudad</span>
+                </h2>
+                <p class="text-lg text-gray-400 mt-4">
+                    Explora los clubes de pádel más cercanos y encuentra la cancha perfecta para tu próximo partido
+                </p>
+            </div>
+
+            <!-- Contenedor del Mapa -->
+            <div class="bg-dark-secondary border-2 border-gray-800 rounded-2xl overflow-hidden shadow-2xl hover:border-neon-lime/60 transition-all duration-300">
+                <div id="map-container" class="w-full" style="height: 600px; min-height: 400px;">
+                    <!-- El mapa se cargará aquí -->
+                    <div class="w-full h-full flex items-center justify-center bg-dark-primary">
+                        <div class="text-center">
+                            <svg class="w-16 h-16 text-neon-lime mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <p class="text-gray-400">Cargando mapa...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Clubes (opcional, para mobile) -->
+            <div class="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Los clubes se mostrarán aquí dinámicamente -->
+            </div>
+        </section>
+
+        <!-- About Section: Sobre Padel Listo -->
+        <section id="about" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+                <!-- Columna Izquierda: Texto -->
+                <div class="lg:w-1/2 text-center lg:text-left">
+                    <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Sobre Padel Listo</span>
+                    <h2 class="text-4xl md:text-5xl font-black mt-4 leading-tight">
+                        Descubre una App Que Te Conecta con el <span class="neon-text-gradient">Mejor Pádel</span> de Tu Ciudad.
+                    </h2>
+                    <p class="text-lg text-gray-300 mt-6 leading-relaxed">
+                        En Padel Listo, combinamos tecnología de vanguardia con una comunidad apasionada. No solo te ofrecemos la forma más rápida de reservar canchas, sino también la oportunidad de conectar con jugadores de tu nivel y formar parte de una red creciente de amantes del pádel.
+                    </p>
+                    <p class="text-lg text-gray-300 mt-4 leading-relaxed">
+                        Desde clubes boutique hasta los centros más grandes, nuestra plataforma digitaliza y optimiza cada aspecto de tu experiencia con el pádel. Únete a miles de jugadores que ya están transformando cómo juegan y gestionan sus partidos.
+                    </p>
+                    <a href="#features" class="inline-block mt-8 border-2 border-neon-lime text-neon-lime font-bold py-3 px-8 rounded-lg hover:bg-neon-lime hover:text-dark-primary transition-all duration-300 transform hover:scale-105 hover-glow">
+                        Lee Más Sobre Nosotros
+                        <svg class="w-5 h-5 inline-block ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"></path>
+                        </svg>
+                    </a>
+                </div>
+                <!-- Columna Derecha: Badge y Estadísticas -->
+                <div class="lg:w-1/2 flex flex-col items-center lg:items-end">
+                    <div class="bg-dark-secondary border-2 border-neon-lime/30 rounded-2xl p-8 max-w-md w-full hover:border-neon-lime/60 transition-all duration-300 hover-glow">
+                        <div class="flex items-center justify-center mb-6">
+                            <div class="w-16 h-16 bg-neon-lime/20 rounded-full flex items-center justify-center">
+                                <svg class="w-10 h-10 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                                </svg>
+                            </div>
+                        </div>
+                        <h3 class="text-3xl font-black text-center mb-2">
+                            <span class="text-neon-lime">+5,000</span> Reservas
+                        </h3>
+                        <p class="text-gray-400 text-center mb-6">Confianza de miles de usuarios</p>
+                        <!-- Video -->
+                        <div class="mb-6 flex justify-center">
+                            <div class="relative w-full max-w-xs">
+                                <div class="absolute inset-0 bg-neon-lime/10 blur-2xl rounded-2xl"></div>
+                                <video 
+                                    autoplay 
+                                    loop 
+                                    muted 
+                                    playsinline
+                                    class="relative w-full h-auto rounded-xl shadow-xl border-2 border-neon-lime/30 glow-neon"
+                                    style="max-height: 300px; object-fit: cover;">
+                                    <source src="paddel3.mp4" type="video/mp4">
+                                    Tu navegador no soporta el elemento de video.
+                                </video>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-center gap-2 mb-4">
+                            <div class="flex -space-x-2">
+                                <div class="w-10 h-10 rounded-full bg-neon-lime/20 border-2 border-dark-secondary"></div>
+                                <div class="w-10 h-10 rounded-full bg-neon-lime/30 border-2 border-dark-secondary"></div>
+                                <div class="w-10 h-10 rounded-full bg-neon-lime/40 border-2 border-dark-secondary"></div>
+                                <div class="w-10 h-10 rounded-full bg-neon-lime/50 border-2 border-dark-secondary"></div>
+                            </div>
+                            <span class="text-neon-lime font-bold text-lg ml-2">+1K</span>
+                        </div>
+                        <p class="text-gray-400 text-center text-sm">
+                            Nuestra comunidad crece cada día. Desde jugadores casuales hasta competidores de élite, todos encuentran su lugar en Padel Listo.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section id="features" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="text-center max-w-3xl mx-auto">
+                <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Por qué Padel Listo</span>
+                <h2 class="text-4xl md:text-5xl font-black mt-2">
+                    Hecho para Jugadores. <span class="neon-text-gradient">Diseñado para Resultados.</span>
+                </h2>
+                <p class="text-lg text-gray-400 mt-4 leading-relaxed">
+                    <span class="text-neon-lime font-semibold">Reserva</span>, <span class="text-neon-lime font-semibold">Conecta</span>, <span class="text-neon-lime font-semibold">Juega</span> – Todo lo que necesitas para jugar más y gestionar menos.
+                </p>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mt-16">
+                <!-- Feature 1 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl transition-all duration-300 hover:border-neon-lime/60 hover-glow group">
+                    <div class="w-16 h-16 bg-neon-lime/20 rounded-xl flex items-center justify-center group-hover:bg-neon-lime/30 transition-colors">
+                        <svg class="w-8 h-8 text-neon-lime" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5m-9-6h.008v.008H12v-.008Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mt-6 mb-3">Reservas en Tiempo Real</h3>
+                    <p class="text-gray-400 leading-relaxed">Ve la disponibilidad de tus clubes favoritos y reserva tu cancha al instante. Sin llamadas ni esperas. Disponibilidad actualizada en tiempo real.</p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl transition-all duration-300 hover:border-neon-lime/60 hover-glow group">
+                    <div class="w-16 h-16 bg-neon-lime/20 rounded-xl flex items-center justify-center group-hover:bg-neon-lime/30 transition-colors">
+                        <svg class="w-8 h-8 text-neon-lime" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 0 0-3.071-5.137c.372-1.218.499-2.5.499-3.835a2.25 2.25 0 0 0-2.25-2.25c-1.02.003-1.957.348-2.67.926C9.92 7.15 9 8.28 9 9.75c0 1.335.127 2.617.499 3.835a9.094 9.094 0 0 0-3.071 5.137 2.25 2.25 0 0 0 2.25 2.28h10.5a2.25 2.25 0 0 0 2.25-2.28Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mt-6 mb-3">Arma Partidos</h3>
+                    <p class="text-gray-400 leading-relaxed">¿Te faltan jugadores? Publica partidos abiertos y encuentra gente de tu nivel para jugar. La comunidad te espera para formar equipos perfectos.</p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl transition-all duration-300 hover:border-neon-lime/60 hover-glow group">
+                    <div class="w-16 h-16 bg-neon-lime/20 rounded-xl flex items-center justify-center group-hover:bg-neon-lime/30 transition-colors">
+                        <svg class="w-8 h-8 text-neon-lime" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6.375c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H3.75c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Zm6.375-3.75h6.375c.621 0 1.125-.504 1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125H10.125c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125Z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold mt-6 mb-3">Pagos Seguros</h3>
+                    <p class="text-gray-400 leading-relaxed">Paga tu parte de la cancha o la reserva completa directamente desde la app de forma rápida y segura. Múltiples métodos de pago disponibles.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testimonials Section -->
+        <section id="testimonials" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Testimonios</span>
+                <h2 class="text-4xl md:text-5xl font-black mt-2">
+                    Lo Que Dicen <span class="neon-text-gradient">Nuestros Usuarios</span>
+                </h2>
+                <p class="text-lg text-gray-400 mt-4">
+                    Miles de jugadores y clubes confían en Padel Listo para gestionar sus partidos.
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Testimonio 1 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl hover:border-neon-lime/40 transition-all duration-300 hover-glow">
+                    <div class="flex items-center gap-1 mb-4">
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed mb-6 italic">
+                        "Antes de usar Padel Listo, tenía que llamar a varios clubes para encontrar cancha. Ahora reservo en segundos y siempre encuentro el mejor horario. ¡La app es increíble!"
+                    </p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-neon-lime/20 border-2 border-neon-lime/30"></div>
+                        <div>
+                            <p class="font-bold text-white">Carlos Martínez</p>
+                            <p class="text-sm text-gray-400">Jugador frecuente</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonio 2 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl hover:border-neon-lime/40 transition-all duration-300 hover-glow">
+                    <div class="flex items-center gap-1 mb-4">
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed mb-6 italic">
+                        "Como dueño de club, Padel Listo ha transformado nuestra operación. Las reservas se gestionan solas, los pagos son automáticos y nuestros clientes están más satisfechos. Ha aumentado nuestras reservas un 40%."
+                    </p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-neon-lime/20 border-2 border-neon-lime/30"></div>
+                        <div>
+                            <p class="font-bold text-white">María González</p>
+                            <p class="text-sm text-gray-400">Directora, Padel Club Premium</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Testimonio 3 -->
+                <div class="bg-dark-secondary p-8 rounded-2xl border-2 border-gray-800 shadow-xl hover:border-neon-lime/40 transition-all duration-300 hover-glow">
+                    <div class="flex items-center gap-1 mb-4">
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                        <svg class="w-6 h-6 text-neon-lime" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path>
+                        </svg>
+                    </div>
+                    <p class="text-gray-300 leading-relaxed mb-6 italic">
+                        "La función de 'Armar Partidos' es genial. Siempre encuentro jugadores de mi nivel y he hecho nuevos amigos. Ahora juego mucho más seguido gracias a la app."
+                    </p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-full bg-neon-lime/20 border-2 border-neon-lime/30"></div>
+                        <div>
+                            <p class="font-bold text-white">Diego Ramírez</p>
+                            <p class="text-sm text-gray-400">Jugador intermedio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Clubs Section -->
+        <section id="clubs" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="flex flex-col lg:flex-row items-center gap-12 lg:gap-16">
+                <!-- Columna de Imagen -->
+                <div class="lg:w-1/2 flex justify-center order-2 lg:order-1">
+                    <div class="relative w-full">
+                        <div class="absolute inset-0 bg-neon-lime/10 blur-3xl rounded-3xl"></div>
+                        <img src="imagenpaddel2.jpg" 
+                             alt="Panel de gestión para clubes de Padel Listo" 
+                             class="relative rounded-2xl shadow-2xl border-4 border-dark-secondary glow-neon transform hover:scale-105 transition-transform duration-300"
+                             style="width: calc(100% - 2cm); max-width: calc(800px - 2cm); height: auto; object-fit: cover;"
+                             onerror="this.src='https://placehold.co/600x400/1A1A1A/BEF264?text=Gesti%C3%B3n+de+Club'">
+                    </div>
+                </div>
+                <!-- Columna de Texto -->
+                <div class="lg:w-1/2 text-center lg:text-left order-1 lg:order-2">
+                    <span class="text-neon-lime font-semibold tracking-wider uppercase text-sm">Para Clubes</span>
+                    <h2 class="text-4xl md:text-5xl font-black mt-4 leading-tight">
+                        Optimiza tu <span class="neon-text-gradient">Gestión.</span>
+                    </h2>
+                    <p class="text-lg text-gray-300 mt-6 leading-relaxed">
+                        Deja de gestionar reservas por teléfono. Ofrécele a tus clientes una experiencia moderna y centraliza toda tu operación en un solo lugar.
+                    </p>
+                    <ul class="space-y-5 mt-8 text-lg">
+                        <li class="flex items-start gap-4 text-gray-300">
+                            <svg class="w-7 h-7 text-neon-lime flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                            <span><span class="font-semibold text-white">Calendario de reservas 100% digital.</span> Gestiona todas tus canchas desde una sola plataforma intuitiva.</span>
+                        </li>
+                        <li class="flex items-start gap-4 text-gray-300">
+                            <svg class="w-7 h-7 text-neon-lime flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                            <span><span class="font-semibold text-white">Gestión de pagos y reportes.</span> Automatiza cobros, genera reportes detallados y analiza tu rendimiento.</span>
+                        </li>
+                        <li class="flex items-start gap-4 text-gray-300">
+                            <svg class="w-7 h-7 text-neon-lime flex-shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+                            </svg>
+                            <span><span class="font-semibold text-white">Aumenta tu visibilidad y reduce canchas vacías.</span> Más reservas, menos tiempo gestionando.</span>
+                        </li>
+                    </ul>
+                    <a href="#contact" class="inline-block mt-10 bg-neon-lime text-dark-primary font-bold py-4 px-8 rounded-lg shadow-lg hover:shadow-neon-lime/50 transition-all duration-300 transform hover:scale-105 hover-glow">
+                        Solicitar Demo
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- Final CTA (Download) -->
+        <section id="download" class="container mx-auto px-6 mt-32 md:mt-48">
+            <div class="bg-dark-secondary p-12 md:p-20 rounded-3xl text-center border-2 border-gray-800 shadow-xl hover:border-neon-lime/30 transition-all duration-300">
+                <h2 class="text-4xl md:text-5xl font-black leading-tight">
+                    ¿Listo para Jugar?
+                </h2>
+                <!-- Video -->
+                <div class="mt-8 mb-8 flex justify-center">
+                    <div class="relative max-w-4xl w-full">
+                        <div class="absolute inset-0 bg-neon-lime/10 blur-3xl rounded-3xl"></div>
+                        <video 
+                            autoplay 
+                            loop 
+                            muted 
+                            playsinline
+                            class="relative w-full h-auto rounded-2xl shadow-2xl border-4 border-dark-secondary glow-neon"
+                            style="max-height: 500px; object-fit: cover;">
+                            <source src="paddel2.mp4" type="video/mp4">
+                            Tu navegador no soporta el elemento de video.
+                        </video>
+                    </div>
+                </div>
+                <p class="text-xl text-gray-300 mt-6 max-w-2xl mx-auto leading-relaxed">
+                    Descarga Padel Listo hoy mismo y lleva tu juego al siguiente nivel. Disponible en iOS y Android.
+                </p>
+                <div class="flex flex-col sm:flex-row justify-center items-center gap-6 mt-12">
+                    <!-- App Store Button -->
+                    <a href="#" class="inline-block transform hover:scale-105 transition-transform duration-300">
+                        <img src="app-store-button.png" 
+                             alt="Descargar en App Store" 
+                             class="store-button-img hover:opacity-90 transition-opacity"
+                             style="height: 60px; width: auto; max-width: 200px; object-fit: contain;"
+                             onerror="this.src='https://placehold.co/200x60/000000/FFFFFF?text=Download+on+App+Store'">
+                    </a>
+                    <!-- Google Play Button -->
+                    <a href="#" class="inline-block transform hover:scale-105 transition-transform duration-300">
+                        <img src="google-play-button.png" 
+                             alt="Descargar en Google Play" 
+                             class="store-button-img hover:opacity-90 transition-opacity"
+                             style="height: 60px; width: auto; max-width: 200px; object-fit: contain;"
+                             onerror="this.src='https://placehold.co/200x60/000000/FFFFFF?text=Get+it+on+Google+Play'">
+                    </a>
+                </div>
+                <!-- QR Code -->
+                <div class="mt-8 flex justify-center">
+                    <div class="bg-white p-4 rounded-xl">
+                        <canvas id="qr-code" class="w-32 h-32"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer id="contact" class="container mx-auto px-6 py-16 mt-24 border-t border-gray-800">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-12 mb-12">
+            <!-- Información de la Empresa -->
+            <div>
+                <a href="#" class="text-2xl font-black text-white tracking-tight mb-4 inline-block">
+                    Padel<span class="text-neon-lime">Listo</span>
+                </a>
+                <p class="text-gray-400 mt-4 leading-relaxed">
+                    La app definitiva para reservar canchas de pádel y conectar con jugadores. Tu próximo partido, a un solo tap.
+                </p>
+            </div>
+
+            <!-- Enlaces Rápidos -->
+            <div>
+                <h3 class="text-white font-bold text-lg mb-4">Enlaces Rápidos</h3>
+                <ul class="space-y-3">
+                    <li><a href="#about" class="text-gray-400 hover:text-neon-lime transition-colors">Sobre Nosotros</a></li>
+                    <li><a href="#features" class="text-gray-400 hover:text-neon-lime transition-colors">Funcionalidades</a></li>
+                    <li><a href="#testimonials" class="text-gray-400 hover:text-neon-lime transition-colors">Testimonios</a></li>
+                    <li><a href="#clubs" class="text-gray-400 hover:text-neon-lime transition-colors">Para Clubes</a></li>
+                    <li><a href="#download" class="text-gray-400 hover:text-neon-lime transition-colors">Descargar</a></li>
+                </ul>
+            </div>
+
+            <!-- Información de Contacto -->
+            <div>
+                <h3 class="text-white font-bold text-lg mb-4">Contacto</h3>
+                <div class="space-y-3 text-gray-400">
+                    <p>
+                        <span class="text-neon-lime font-semibold">Email:</span><br>
+                        contacto@padellisto.com
+                    </p>
+                    <p>
+                        <span class="text-neon-lime font-semibold">Horarios de Atención:</span><br>
+                        Lunes - Viernes: 9:00 AM - 8:00 PM<br>
+                        Sábado - Domingo: 10:00 AM - 6:00 PM
+                    </p>
+                </div>
+                <!-- Redes Sociales -->
+                <div class="flex gap-4 mt-6">
+                    <a href="#" class="w-10 h-10 rounded-full bg-dark-secondary border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-lime hover:border-neon-lime transition-all duration-300">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"></path>
+                        </svg>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-dark-secondary border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-lime hover:border-neon-lime transition-all duration-300">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678c-3.405 0-6.162 2.76-6.162 6.162 0 3.405 2.76 6.162 6.162 6.162 3.405 0 6.162-2.76 6.162-6.162 0-3.405-2.76-6.162-6.162-6.162zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405c0 .795-.646 1.44-1.44 1.44-.795 0-1.44-.646-1.44-1.44 0-.794.646-1.439 1.44-1.439.793-.001 1.44.645 1.44 1.439z"></path>
+                        </svg>
+                    </a>
+                    <a href="#" class="w-10 h-10 rounded-full bg-dark-secondary border border-gray-700 flex items-center justify-center text-gray-400 hover:text-neon-lime hover:border-neon-lime transition-all duration-300">
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="pt-8 border-t border-gray-800 flex flex-col md:flex-row justify-between items-center text-gray-500 text-sm">
+            <p>© 2025 Padel Listo. Todos los derechos reservados.</p>
+            <div class="flex gap-6 mt-4 md:mt-0">
+                <a href="#" class="hover:text-neon-lime transition-colors">Términos de Servicio</a>
+                <a href="#" class="hover:text-neon-lime transition-colors">Política de Privacidad</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal de Confirmación de Reserva -->
+    <div id="reservation-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+        <div class="bg-dark-secondary border-2 border-neon-lime/60 rounded-2xl shadow-2xl max-w-md w-full p-8 relative glow-neon animate-fade-in">
+            <!-- Botón de cerrar -->
+            <button id="close-modal" class="absolute top-4 right-4 text-gray-400 hover:text-neon-lime transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+
+            <!-- Contenido del modal -->
+            <div class="text-center">
+                <!-- Icono de confirmación -->
+                <div class="w-20 h-20 bg-neon-lime/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <svg class="w-12 h-12 text-neon-lime" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-3xl font-black text-white mb-2">Confirmar Reserva</h3>
+                <p class="text-gray-400 mb-6">Revisa los detalles de tu reserva</p>
+
+                <!-- Detalles de la reserva -->
+                <div class="bg-dark-primary rounded-xl p-6 mb-6 text-left border border-gray-800">
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Cancha:</span>
+                            <span class="text-white font-bold" id="modal-court-name">Cancha 1</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Fecha:</span>
+                            <span class="text-white font-bold" id="modal-date">Hoy</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Horario:</span>
+                            <span class="text-neon-lime font-bold text-lg" id="modal-time">18:30</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-gray-400">Duración:</span>
+                            <span class="text-white font-semibold">1 hora</span>
+                        </div>
+                        <div class="border-t border-gray-800 pt-4 mt-4">
+                            <div class="flex justify-between items-center">
+                                <span class="text-gray-400 text-lg">Total:</span>
+                                <span class="text-neon-lime font-black text-2xl" id="modal-price">$4,000</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información adicional -->
+                <div class="bg-neon-lime/10 border border-neon-lime/30 rounded-lg p-4 mb-6 text-sm text-gray-300">
+                    <p class="flex items-start gap-2">
+                        <svg class="w-5 h-5 text-neon-lime flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span>Tu reserva quedará confirmada una vez completes el pago. Puedes cancelar hasta 2 horas antes del horario.</span>
+                    </p>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <button id="cancel-reservation" class="flex-1 border-2 border-gray-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-gray-800 hover:border-neon-lime/50 transition-all duration-300">
+                        Cancelar
+                    </button>
+                    <button id="confirm-reservation" class="flex-1 bg-neon-lime text-dark-primary font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-neon-lime/50 transition-all duration-300 transform hover:scale-105 hover-glow">
+                        Confirmar y Pagar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Sign-In Script -->
+    <script>
+        // Estilos personalizados para el botón de Google
+        const customGoogleButtonStyle = `
+            #google-signin-button iframe,
+            #google-signin-button-mobile iframe {
+                border-radius: 8px !important;
+                box-shadow: 0 0 20px rgba(190, 242, 100, 0.3) !important;
+                transition: all 0.3s ease !important;
+            }
+            #google-signin-button:hover iframe,
+            #google-signin-button-mobile:hover iframe {
+                box-shadow: 0 0 30px rgba(190, 242, 100, 0.5) !important;
+                transform: scale(1.05) !important;
+            }
+        `;
+        
+        // Agregar estilos al head
+        const style = document.createElement('style');
+        style.textContent = customGoogleButtonStyle;
+        document.head.appendChild(style);
+
+        // Inicializar Google Sign-In cuando el script esté cargado
+        window.onload = function() {
+            google.accounts.id.initialize({
+                client_id: 'TU_CLIENT_ID_AQUI', // Reemplaza con tu Client ID de Google
+                callback: handleCredentialResponse,
+                auto_select: false,
+                cancel_on_tap_outside: true
+            });
+
+            // Renderizar botones ocultos (necesarios para el flujo de Google)
+            google.accounts.id.renderButton(
+                document.getElementById('google-signin-button'),
+                { theme: 'outline', size: 'large', text: 'signin_with', width: 200 }
+            );
+
+            google.accounts.id.renderButton(
+                document.getElementById('google-signin-button-mobile'),
+                { theme: 'outline', size: 'medium', text: 'signin_with', width: 150 }
+            );
+
+            // Agregar event listeners a los botones personalizados
+            document.getElementById('custom-google-signin').addEventListener('click', function() {
+                // Mostrar el prompt de Google Sign-In
+                google.accounts.id.prompt();
+            });
+
+            document.getElementById('custom-google-signin-mobile').addEventListener('click', function() {
+                // Mostrar el prompt de Google Sign-In
+                google.accounts.id.prompt();
+            });
+        };
+
+        // Manejar la respuesta de autenticación
+        function handleCredentialResponse(response) {
+            // Decodificar el JWT token (solo para obtener información básica)
+            const base64Url = response.credential.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+
+            const userData = JSON.parse(jsonPayload);
+            
+            console.log('Usuario autenticado:', userData);
+            
+            // Guardar datos del usuario en localStorage
+            localStorage.setItem('userData', JSON.stringify(userData));
+            localStorage.setItem('isAuthenticated', 'true');
+            
+            // Aquí puedes enviar el token a tu backend o manejar la sesión
+            // Por ejemplo:
+            // fetch('/api/auth/google', {
+            //     method: 'POST',
+            //     headers: { 'Content-Type': 'application/json' },
+            //     body: JSON.stringify({ credential: response.credential })
+            // });
+
+            // Mostrar perfil de usuario
+            showUserProfile(userData);
+        }
+
+        // Función para determinar el nivel del jugador (simulado)
+        function getUserLevel(userData) {
+            // En producción, esto vendría del backend basado en estadísticas del usuario
+            // Por ahora, simulamos niveles basados en el email o nombre
+            const levels = ['Principiante', 'Intermedio', 'Avanzado', 'Experto', 'Profesional'];
+            // Simulación simple: usar el hash del email para determinar nivel
+            let hash = 0;
+            for (let i = 0; i < userData.email.length; i++) {
+                hash = userData.email.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const levelIndex = Math.abs(hash) % levels.length;
+            return levels[levelIndex];
+        }
+
+        // Función para mostrar el perfil de usuario
+        function showUserProfile(userData) {
+            const userLevel = getUserLevel(userData);
+            
+            // Ocultar botones de login
+            document.getElementById('custom-google-signin').classList.add('hidden');
+            document.getElementById('custom-google-signin-mobile').classList.add('hidden');
+            
+            // Mostrar perfil desktop
+            const userProfile = document.getElementById('user-profile');
+            const userAvatar = document.getElementById('user-avatar');
+            const userName = document.getElementById('user-name');
+            const userLevelEl = document.getElementById('user-level');
+            
+            if (userProfile && userAvatar && userName && userLevelEl) {
+                userAvatar.src = userData.picture || '';
+                userAvatar.alt = userData.name || 'Usuario';
+                userName.textContent = userData.name || 'Usuario';
+                userLevelEl.textContent = userLevel;
+                userProfile.classList.remove('hidden');
+            }
+            
+            // Mostrar perfil mobile
+            const userProfileMobile = document.getElementById('user-profile-mobile');
+            const userAvatarMobile = document.getElementById('user-avatar-mobile');
+            const userNameMobile = document.getElementById('user-name-mobile');
+            const userLevelMobile = document.getElementById('user-level-mobile');
+            
+            if (userProfileMobile && userAvatarMobile && userNameMobile && userLevelMobile) {
+                userAvatarMobile.src = userData.picture || '';
+                userAvatarMobile.alt = userData.name || 'Usuario';
+                userNameMobile.textContent = userData.name || 'Usuario';
+                userLevelMobile.textContent = `Nivel: ${userLevel}`;
+                userProfileMobile.classList.remove('hidden');
+            }
+        }
+
+        // Función para cerrar sesión
+        function logout() {
+            localStorage.removeItem('userData');
+            localStorage.removeItem('isAuthenticated');
+            
+            // Ocultar perfil
+            document.getElementById('user-profile').classList.add('hidden');
+            document.getElementById('user-profile-mobile').classList.add('hidden');
+            
+            // Mostrar botones de login
+            document.getElementById('custom-google-signin').classList.remove('hidden');
+            document.getElementById('custom-google-signin-mobile').classList.remove('hidden');
+            
+            // Revocar token de Google
+            if (window.google && google.accounts) {
+                google.accounts.id.disableAutoSelect();
+            }
+            
+            console.log('Sesión cerrada');
+        }
+
+
+        // Agregar event listener para el botón de logout (se ejecuta después de que el DOM esté listo)
+        function setupLogoutButton() {
+            const logoutButton = document.getElementById('logout-button');
+            if (logoutButton) {
+                logoutButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    logout();
+                });
+            }
+        }
+
+        // Ejecutar cuando el DOM esté listo
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                setupLogoutButton();
+                // Verificar autenticación al cargar
+                const isAuthenticated = localStorage.getItem('isAuthenticated');
+                const userDataStr = localStorage.getItem('userData');
+                
+                if (isAuthenticated === 'true' && userDataStr) {
+                    try {
+                        const userData = JSON.parse(userDataStr);
+                        showUserProfile(userData);
+                    } catch (e) {
+                        console.error('Error al cargar datos del usuario:', e);
+                    }
+                }
+            });
+        } else {
+            setupLogoutButton();
+            // Verificar autenticación si el DOM ya está listo
+            const isAuthenticated = localStorage.getItem('isAuthenticated');
+            const userDataStr = localStorage.getItem('userData');
+            
+            if (isAuthenticated === 'true' && userDataStr) {
+                try {
+                    const userData = JSON.parse(userDataStr);
+                    showUserProfile(userData);
+                } catch (e) {
+                    console.error('Error al cargar datos del usuario:', e);
+                }
+            }
+        }
+
+        // Buscador Interactivo de Canchas
+        (function() {
+            const searchInput = document.getElementById('search-courts');
+            const searchButton = document.getElementById('search-button');
+            const suggestionsDiv = document.getElementById('search-suggestions');
+            
+            // Datos de ejemplo de canchas (en producción vendría de una API)
+            const exampleCourts = [
+                { name: 'Padel Club Premium', city: 'Buenos Aires', address: 'Av. Corrientes 1234' },
+                { name: 'Canchas Padel Express', city: 'Córdoba', address: 'Av. Colón 567' },
+                { name: 'Padel Center', city: 'Rosario', address: 'Bv. Oroño 890' },
+                { name: 'Club de Pádel VIP', city: 'Buenos Aires', address: 'Palermo, Av. Santa Fe 2000' },
+                { name: 'Padel Arena', city: 'Mendoza', address: 'Av. San Martín 456' },
+                { name: 'Canchas Elite', city: 'La Plata', address: 'Calle 50 123' },
+                { name: 'Padel Pro', city: 'Buenos Aires', address: 'Belgrano, Av. Cabildo 3000' },
+                { name: 'Club Pádel Sur', city: 'Mar del Plata', address: 'Av. Constitución 789' }
+            ];
+
+            // Función para filtrar sugerencias
+            function filterSuggestions(query) {
+                if (!query || query.length < 2) {
+                    return [];
+                }
+                const lowerQuery = query.toLowerCase();
+                return exampleCourts.filter(court => 
+                    court.name.toLowerCase().includes(lowerQuery) ||
+                    court.city.toLowerCase().includes(lowerQuery) ||
+                    court.address.toLowerCase().includes(lowerQuery)
+                ).slice(0, 5); // Máximo 5 sugerencias
+            }
+
+            // Función para mostrar sugerencias
+            function showSuggestions(suggestions) {
+                if (suggestions.length === 0) {
+                    suggestionsDiv.classList.add('hidden');
+                    return;
+                }
+
+                suggestionsDiv.innerHTML = '';
+                suggestions.forEach(court => {
+                    const suggestionItem = document.createElement('div');
+                    suggestionItem.className = 'px-6 py-4 hover:bg-gray-800 cursor-pointer transition-colors border-b border-gray-800 last:border-b-0';
+                    suggestionItem.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <svg class="w-5 h-5 text-neon-lime flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            </svg>
+                            <div class="flex-1">
+                                <p class="text-white font-semibold">${court.name}</p>
+                                <p class="text-gray-400 text-sm">${court.city} - ${court.address}</p>
+                            </div>
+                        </div>
+                    `;
+                    suggestionItem.addEventListener('click', () => {
+                        searchInput.value = `${court.name}, ${court.city}`;
+                        suggestionsDiv.classList.add('hidden');
+                        performSearch(searchInput.value);
+                    });
+                    suggestionsDiv.appendChild(suggestionItem);
+                });
+
+                suggestionsDiv.classList.remove('hidden');
+            }
+
+            // Función para realizar la búsqueda
+            function performSearch(query) {
+                if (!query || query.trim().length === 0) {
+                    return;
+                }
+                console.log('Buscando canchas para:', query);
+                // Aquí iría la lógica real de búsqueda
+                // Por ejemplo: window.location.href = `/buscar?q=${encodeURIComponent(query)}`;
+                // O mostrar resultados en la misma página
+                alert(`Buscando canchas para: ${query}\n\n(En producción, esto redirigiría a la página de resultados)`);
+            }
+
+            // Event listeners
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value;
+                const suggestions = filterSuggestions(query);
+                showSuggestions(suggestions);
+            });
+
+            searchInput.addEventListener('focus', () => {
+                const query = searchInput.value;
+                if (query.length >= 2) {
+                    const suggestions = filterSuggestions(query);
+                    showSuggestions(suggestions);
+                }
+            });
+
+            searchButton.addEventListener('click', () => {
+                performSearch(searchInput.value);
+            });
+
+            searchInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    performSearch(searchInput.value);
+                    suggestionsDiv.classList.add('hidden');
+                }
+            });
+
+            // Cerrar sugerencias al hacer click fuera
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !suggestionsDiv.contains(e.target) && !searchButton.contains(e.target)) {
+                    suggestionsDiv.classList.add('hidden');
+                }
+            });
+        })();
+
+        // Grilla de Disponibilidad Visual
+        (function() {
+            // Datos de ejemplo de slots de tiempo por cancha
+            const courtSlots = {
+                1: [
+                    { time: '18:00', price: 3500, available: true },
+                    { time: '18:30', price: 4000, available: true },
+                    { time: '19:00', price: 4000, available: true },
+                    { time: '19:30', price: 4500, available: true },
+                    { time: '20:00', price: 4500, available: true },
+                    { time: '20:30', price: 5000, available: false }
+                ],
+                2: [
+                    { time: '17:30', price: 3000, available: true },
+                    { time: '18:00', price: 3500, available: true },
+                    { time: '18:30', price: 3500, available: true },
+                    { time: '19:00', price: 4000, available: true },
+                    { time: '19:30', price: 4000, available: false },
+                    { time: '20:00', price: 4500, available: true }
+                ],
+                3: [
+                    { time: '18:00', price: 4000, available: true },
+                    { time: '18:30', price: 4500, available: true },
+                    { time: '19:00', price: 4500, available: true },
+                    { time: '19:30', price: 5000, available: true },
+                    { time: '20:00', price: 5000, available: true },
+                    { time: '20:30', price: 5500, available: true }
+                ]
+            };
+
+            // Función para generar slots de tiempo
+            function generateTimeSlots(courtId) {
+                const slotsContainer = document.getElementById(`slots-court-${courtId}`);
+                if (!slotsContainer) return;
+
+                const slots = courtSlots[courtId] || [];
+                slotsContainer.innerHTML = '';
+
+                slots.forEach(slot => {
+                    const slotButton = document.createElement('button');
+                    slotButton.className = `py-2.5 px-3 rounded-lg text-sm font-semibold transition-all duration-300 ${
+                        slot.available 
+                            ? 'bg-neon-lime/20 text-neon-lime border-2 border-neon-lime/40 hover:bg-neon-lime/30 hover:border-neon-lime hover:scale-105 hover-glow cursor-pointer' 
+                            : 'bg-gray-800/50 text-gray-600 border-2 border-gray-700 cursor-not-allowed opacity-50'
+                    }`;
+                    
+                    slotButton.innerHTML = `
+                        <div class="text-center">
+                            <div class="font-bold">${slot.time}</div>
+                            <div class="text-xs mt-1">$${slot.price.toLocaleString('es-AR')}</div>
+                        </div>
+                    `;
+
+                    if (slot.available) {
+                        slotButton.addEventListener('click', () => {
+                            // Remover selección previa en esta cancha
+                            slotsContainer.querySelectorAll('button').forEach(btn => {
+                                btn.classList.remove('bg-neon-lime', 'text-dark-primary', 'border-neon-lime');
+                                btn.classList.add('bg-neon-lime/20', 'text-neon-lime', 'border-neon-lime/40');
+                            });
+                            
+                            // Marcar como seleccionado
+                            slotButton.classList.remove('bg-neon-lime/20', 'text-neon-lime', 'border-neon-lime/40');
+                            slotButton.classList.add('bg-neon-lime', 'text-dark-primary', 'border-neon-lime');
+                            
+                            // Mostrar modal de confirmación
+                            showReservationModal(courtId, slot.time, slot.price);
+                        });
+                    }
+
+                    slotsContainer.appendChild(slotButton);
+                });
+            }
+
+            // Generar slots para todas las canchas al cargar
+            window.addEventListener('DOMContentLoaded', () => {
+                [1, 2, 3].forEach(courtId => {
+                    generateTimeSlots(courtId);
+                });
+            });
+
+            // Si el DOM ya está cargado, generar inmediatamente
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', () => {
+                    [1, 2, 3].forEach(courtId => {
+                        generateTimeSlots(courtId);
+                    });
+                });
+            } else {
+                [1, 2, 3].forEach(courtId => {
+                    generateTimeSlots(courtId);
+                });
+            }
+
+            // Función para mostrar el modal de reserva
+            function showReservationModal(courtId, time, price) {
+                const modal = document.getElementById('reservation-modal');
+                const courtName = document.getElementById('modal-court-name');
+                const modalDate = document.getElementById('modal-date');
+                const modalTime = document.getElementById('modal-time');
+                const modalPrice = document.getElementById('modal-price');
+
+                // Obtener información de la cancha
+                const courtCard = document.querySelector(`[data-court="${courtId}"]`);
+                const courtTitle = courtCard ? courtCard.querySelector('h3').textContent : `Cancha ${courtId}`;
+                
+                // Obtener fecha actual formateada
+                const today = new Date();
+                const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = today.toLocaleDateString('es-AR', dateOptions);
+
+                // Actualizar contenido del modal
+                courtName.textContent = courtTitle;
+                modalDate.textContent = formattedDate;
+                modalTime.textContent = time;
+                modalPrice.textContent = `$${price.toLocaleString('es-AR')}`;
+
+                // Mostrar modal
+                modal.classList.remove('hidden');
+                document.body.style.overflow = 'hidden'; // Prevenir scroll del body
+            }
+
+            // Función para cerrar el modal
+            function closeReservationModal() {
+                const modal = document.getElementById('reservation-modal');
+                modal.classList.add('hidden');
+                document.body.style.overflow = ''; // Restaurar scroll del body
+            }
+
+            // Event listeners para el modal
+            document.getElementById('close-modal').addEventListener('click', closeReservationModal);
+            document.getElementById('cancel-reservation').addEventListener('click', closeReservationModal);
+            
+            // Cerrar modal al hacer click fuera
+            document.getElementById('reservation-modal').addEventListener('click', (e) => {
+                if (e.target.id === 'reservation-modal') {
+                    closeReservationModal();
+                }
+            });
+
+            // Confirmar reserva
+            document.getElementById('confirm-reservation').addEventListener('click', () => {
+                const courtName = document.getElementById('modal-court-name').textContent;
+                const time = document.getElementById('modal-time').textContent;
+                const price = document.getElementById('modal-price').textContent;
+                
+                // Aquí iría la lógica real de confirmación
+                // Por ejemplo: enviar a backend, procesar pago, etc.
+                console.log(`Reserva confirmada: ${courtName} a las ${time} por ${price}`);
+                
+                // Mostrar mensaje de éxito
+                alert(`¡Reserva confirmada!\n\n${courtName}\n${time}\n${price}\n\nTe enviaremos un email de confirmación.`);
+                
+                // Cerrar modal
+                closeReservationModal();
+                
+                // Opcional: Redirigir a página de pago o dashboard
+                // window.location.href = '/pago';
+            });
+
+            // Cerrar modal con ESC
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    const modal = document.getElementById('reservation-modal');
+                    if (!modal.classList.contains('hidden')) {
+                        closeReservationModal();
+                    }
+                }
+            });
+        })();
+
+        // Mapa Interactivo de Clubes
+        let map;
+        let markers = [];
+
+        // Datos de ejemplo de clubes con coordenadas
+        const clubs = [
+            { 
+                name: 'Padel Club Premium', 
+                lat: -34.6037, 
+                lng: -58.3816, 
+                address: 'Av. Corrientes 1234, Buenos Aires',
+                phone: '+54 11 1234-5678',
+                rating: 4.8
+            },
+            { 
+                name: 'Canchas Padel Express', 
+                lat: -31.4201, 
+                lng: -64.1888, 
+                address: 'Av. Colón 567, Córdoba',
+                phone: '+54 351 234-5678',
+                rating: 4.6
+            },
+            { 
+                name: 'Padel Center', 
+                lat: -32.9442, 
+                lng: -60.6505, 
+                address: 'Bv. Oroño 890, Rosario',
+                phone: '+54 341 345-6789',
+                rating: 4.7
+            },
+            { 
+                name: 'Club de Pádel VIP', 
+                lat: -34.5889, 
+                lng: -58.3974, 
+                address: 'Av. Santa Fe 2000, Palermo, Buenos Aires',
+                phone: '+54 11 2345-6789',
+                rating: 4.9
+            },
+            { 
+                name: 'Padel Arena', 
+                lat: -32.8895, 
+                lng: -68.8458, 
+                address: 'Av. San Martín 456, Mendoza',
+                phone: '+54 261 456-7890',
+                rating: 4.5
+            },
+            { 
+                name: 'Canchas Elite', 
+                lat: -34.9215, 
+                lng: -57.9545, 
+                address: 'Calle 50 123, La Plata',
+                phone: '+54 221 567-8901',
+                rating: 4.6
+            }
+        ];
+
+        // Función para inicializar el mapa
+        function initMap() {
+            // Coordenadas por defecto (Buenos Aires)
+            const defaultLocation = { lat: -34.6037, lng: -58.3816 };
+
+            // Crear el mapa
+            map = new google.maps.Map(document.getElementById('map-container'), {
+                center: defaultLocation,
+                zoom: 12,
+                styles: [
+                    {
+                        featureType: 'all',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#1A1A1A' }]
+                    },
+                    {
+                        featureType: 'all',
+                        elementType: 'labels.text.fill',
+                        stylers: [{ color: '#F3F4F6' }]
+                    },
+                    {
+                        featureType: 'water',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#0D0D0D' }]
+                    },
+                    {
+                        featureType: 'road',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#2A2A2A' }]
+                    },
+                    {
+                        featureType: 'poi',
+                        elementType: 'geometry',
+                        stylers: [{ color: '#1A1A1A' }]
+                    }
+                ],
+                mapTypeControl: false,
+                fullscreenControl: true,
+                streetViewControl: false
+            });
+
+            // Agregar marcadores para cada club
+            clubs.forEach((club, index) => {
+                const marker = new google.maps.Marker({
+                    position: { lat: club.lat, lng: club.lng },
+                    map: map,
+                    title: club.name,
+                    icon: {
+                        path: google.maps.SymbolPath.CIRCLE,
+                        scale: 10,
+                        fillColor: '#BEF264',
+                        fillOpacity: 1,
+                        strokeColor: '#0D0D0D',
+                        strokeWeight: 2
+                    },
+                    animation: google.maps.Animation.DROP
+                });
+
+                // Crear contenido del InfoWindow
+                const infoWindowContent = `
+                    <div style="color: #F3F4F6; font-family: 'Inter', sans-serif; min-width: 250px;">
+                        <h3 style="color: #BEF264; font-weight: 900; font-size: 1.25rem; margin-bottom: 0.5rem;">${club.name}</h3>
+                        <p style="color: #9CA3AF; margin-bottom: 0.5rem; font-size: 0.875rem;">${club.address}</p>
+                        <p style="color: #9CA3AF; margin-bottom: 0.5rem; font-size: 0.875rem;">${club.phone}</p>
+                        <div style="display: flex; align-items: center; gap: 0.5rem; margin-top: 0.75rem;">
+                            <span style="color: #BEF264; font-weight: 700;">⭐ ${club.rating}</span>
+                            <button onclick="selectClub(${index})" style="background: #BEF264; color: #0D0D0D; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 700; cursor: pointer; margin-left: auto;">
+                                Ver Canchas
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                const infoWindow = new google.maps.InfoWindow({
+                    content: infoWindowContent
+                });
+
+                // Agregar evento click al marcador
+                marker.addListener('click', () => {
+                    // Cerrar otros infoWindows
+                    markers.forEach(m => {
+                        if (m.infoWindow) {
+                            m.infoWindow.close();
+                        }
+                    });
+                    infoWindow.open(map, marker);
+                });
+
+                markers.push({ marker, infoWindow, club });
+            });
+
+            // Intentar obtener la ubicación del usuario
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const userLocation = {
+                            lat: position.coords.latitude,
+                            lng: position.coords.longitude
+                        };
+                        
+                        // Centrar el mapa en la ubicación del usuario
+                        map.setCenter(userLocation);
+                        map.setZoom(13);
+
+                        // Agregar marcador de la ubicación del usuario
+                        new google.maps.Marker({
+                            position: userLocation,
+                            map: map,
+                            icon: {
+                                path: google.maps.SymbolPath.CIRCLE,
+                                scale: 8,
+                                fillColor: '#4285F4',
+                                fillOpacity: 1,
+                                strokeColor: '#FFFFFF',
+                                strokeWeight: 2
+                            },
+                            title: 'Tu ubicación'
+                        });
+                    },
+                    () => {
+                        // Si no se puede obtener la ubicación, usar la ubicación por defecto
+                        console.log('No se pudo obtener la ubicación del usuario');
+                    }
+                );
+            }
+        }
+
+        // Función para seleccionar un club (se puede expandir)
+        function selectClub(index) {
+            const club = clubs[index];
+            console.log('Club seleccionado:', club);
+            // Aquí podrías redirigir a la página del club o mostrar más detalles
+            // window.location.href = `/club/${club.id}`;
+            alert(`Redirigiendo a ${club.name}\n\n(En producción, esto llevaría a la página del club)`);
+        }
+
+        // Manejar errores de carga del mapa
+        window.gm_authFailure = function() {
+            const mapContainer = document.getElementById('map-container');
+            mapContainer.innerHTML = `
+                <div class="w-full h-full flex items-center justify-center bg-dark-primary">
+                    <div class="text-center p-8">
+                        <svg class="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <p class="text-gray-400 mb-2">No se pudo cargar el mapa</p>
+                        <p class="text-gray-500 text-sm">Por favor, verifica tu API Key de Google Maps</p>
+                    </div>
+                </div>
+            `;
+        };
+
+        // Widget de Clima en Tiempo Real
+        (function() {
+            const API_KEY = 'TU_API_KEY_OPENWEATHERMAP'; // Reemplaza con tu API Key de OpenWeatherMap
+            const DEFAULT_CITY = 'Buenos Aires,AR'; // Ciudad por defecto
+
+            // Iconos de clima
+            const weatherIcons = {
+                '01d': '☀️', '01n': '🌙', // Clear sky
+                '02d': '⛅', '02n': '☁️', // Few clouds
+                '03d': '☁️', '03n': '☁️', // Scattered clouds
+                '04d': '☁️', '04n': '☁️', // Broken clouds
+                '09d': '🌧️', '09n': '🌧️', // Shower rain
+                '10d': '🌦️', '10n': '🌧️', // Rain
+                '11d': '⛈️', '11n': '⛈️', // Thunderstorm
+                '13d': '❄️', '13n': '❄️', // Snow
+                '50d': '🌫️', '50n': '🌫️'  // Mist
+            };
+
+            // Función para obtener el clima
+            async function fetchWeather(city = DEFAULT_CITY) {
+                try {
+                    // Primero intentar obtener la ubicación del usuario
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                                const lat = position.coords.latitude;
+                                const lon = position.coords.longitude;
+                                await fetchWeatherByCoords(lat, lon);
+                            },
+                            async () => {
+                                // Si no se puede obtener la ubicación, usar ciudad por defecto
+                                await fetchWeatherByCity(city);
+                            }
+                        );
+                    } else {
+                        await fetchWeatherByCity(city);
+                    }
+                } catch (error) {
+                    console.error('Error al obtener el clima:', error);
+                    updateWeatherWidget(null, 'Error al cargar');
+                }
+            }
+
+            // Obtener clima por coordenadas
+            async function fetchWeatherByCoords(lat, lon) {
+                const url = `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=es`;
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&appid=${API_KEY}&units=metric&lang=es&cnt=4`;
+                
+                try {
+                    const [weatherRes, forecastRes] = await Promise.all([
+                        fetch(url),
+                        fetch(forecastUrl)
+                    ]);
+                    
+                    if (weatherRes.ok && forecastRes.ok) {
+                        const weatherData = await weatherRes.json();
+                        const forecastData = await forecastRes.json();
+                        updateWeatherWidget(weatherData, null, forecastData);
+                    } else {
+                        updateWeatherWidget(null, 'No disponible');
+                    }
+                } catch (error) {
+                    updateWeatherWidget(null, 'Error');
+                }
+            }
+
+            // Obtener clima por ciudad
+            async function fetchWeatherByCity(city) {
+                const url = `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${API_KEY}&units=metric&lang=es`;
+                const forecastUrl = `https://api.openweathermap.org/data/2.5/forecast?q=${city}&appid=${API_KEY}&units=metric&lang=es&cnt=4`;
+                
+                try {
+                    const [weatherRes, forecastRes] = await Promise.all([
+                        fetch(url),
+                        fetch(forecastUrl)
+                    ]);
+                    
+                    if (weatherRes.ok && forecastRes.ok) {
+                        const weatherData = await weatherRes.json();
+                        const forecastData = await forecastRes.json();
+                        updateWeatherWidget(weatherData, null, forecastData);
+                    } else {
+                        updateWeatherWidget(null, 'No disponible');
+                    }
+                } catch (error) {
+                    updateWeatherWidget(null, 'Error');
+                }
+            }
+
+            // Actualizar el widget con los datos
+            function updateWeatherWidget(data, error, forecastData = null) {
+                const tempEl = document.getElementById('weather-temp-float');
+                const conditionEl = document.getElementById('weather-condition-float');
+                const iconEl = document.getElementById('weather-icon-float');
+                const forecastEl = document.getElementById('weather-forecast-float');
+
+                if (error || !data) {
+                    if (tempEl) tempEl.textContent = '--°';
+                    if (conditionEl) conditionEl.textContent = error || 'No disponible';
+                    if (iconEl) iconEl.textContent = '🌤️';
+                    if (forecastEl) forecastEl.textContent = '--';
+                    return;
+                }
+
+                const temp = Math.round(data.main.temp);
+                const condition = data.weather[0].description;
+                const iconCode = data.weather[0].icon;
+                const icon = weatherIcons[iconCode] || '🌤️';
+
+                // Actualizar widget flotante
+                if (tempEl) tempEl.textContent = `${temp}°`;
+                if (conditionEl) conditionEl.textContent = condition.charAt(0).toUpperCase() + condition.slice(1);
+                if (iconEl) iconEl.textContent = icon;
+
+                // Pronóstico de próximas horas
+                if (forecastData && forecastData.list && forecastData.list.length > 0) {
+                    const nextHours = forecastData.list.slice(0, 3);
+                    const temps = nextHours.map(h => Math.round(h.main.temp));
+                    const minTemp = Math.min(...temps);
+                    const maxTemp = Math.max(...temps);
+                    if (forecastEl) forecastEl.textContent = `${minTemp}°-${maxTemp}° próximas horas`;
+                } else {
+                    if (forecastEl) forecastEl.textContent = 'Pronóstico disponible';
+                }
+            }
+
+            // Cargar clima al iniciar
+            fetchWeather();
+
+            // Actualizar cada 30 minutos
+            setInterval(() => {
+                fetchWeather();
+            }, 30 * 60 * 1000);
+
+            // Agregar tooltip al hacer hover (opcional)
+            const weatherWidget = document.getElementById('weather-widget-float');
+            if (weatherWidget) {
+                weatherWidget.addEventListener('click', () => {
+                    // Aquí podrías abrir un modal con más detalles del clima
+                    alert('Pronóstico extendido:\n\n(En producción, esto mostraría un modal con el pronóstico detallado)');
+                });
+            }
+        })();
+
+        // Registro del Service Worker para PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then((registration) => {
+                        console.log('Service Worker registrado exitosamente:', registration.scope);
+                        
+                        // Verificar actualizaciones periódicamente
+                        setInterval(() => {
+                            registration.update();
+                        }, 60 * 60 * 1000); // Cada hora
+                    })
+                    .catch((error) => {
+                        console.log('Error al registrar Service Worker:', error);
+                    });
+            });
+
+            // Manejar actualizaciones del Service Worker
+            let refreshing = false;
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                if (!refreshing) {
+                    refreshing = true;
+                    window.location.reload();
+                }
+            });
+        }
+
+        // Detectar si la app está instalada
+        window.addEventListener('beforeinstallprompt', (e) => {
+            // Prevenir el prompt automático
+            e.preventDefault();
+            
+            // Guardar el evento para usarlo más tarde
+            window.deferredPrompt = e;
+            
+            // Mostrar botón personalizado de instalación (opcional)
+            const installButton = document.createElement('button');
+            installButton.textContent = 'Instalar App';
+            installButton.className = 'fixed bottom-4 right-4 bg-neon-lime text-dark-primary font-bold py-3 px-6 rounded-lg shadow-lg hover:shadow-neon-lime/50 transition-all duration-300 transform hover:scale-105 hover-glow z-50';
+            installButton.style.display = 'none';
+            installButton.id = 'install-button';
+            document.body.appendChild(installButton);
+            
+            // Mostrar el botón
+            installButton.style.display = 'block';
+            
+            // Manejar el click del botón
+            installButton.addEventListener('click', async () => {
+                // Mostrar el prompt de instalación
+                e.prompt();
+                
+                // Esperar la respuesta del usuario
+                const { outcome } = await e.userChoice;
+                console.log(`Usuario ${outcome === 'accepted' ? 'aceptó' : 'rechazó'} la instalación`);
+                
+                // Ocultar el botón
+                installButton.style.display = 'none';
+                
+                // Limpiar el evento
+                window.deferredPrompt = null;
+            });
+        });
+
+        // Detectar si la app ya está instalada
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('La app está ejecutándose en modo standalone (instalada)');
+            // Ocultar el botón de instalación si existe
+            const installButton = document.getElementById('install-button');
+            if (installButton) {
+                installButton.style.display = 'none';
+            }
+        }
+
+        // Generar Código QR
+        (function() {
+            // URL para el código QR - Página de Padel Listo
+            const qrUrl = 'https://paddellisto.com'; // URL de la página de Padel Listo
+            
+            // Esperar a que la librería QRCode esté cargada
+            function generateQR() {
+                const canvas = document.getElementById('qr-code');
+                if (!canvas) {
+                    setTimeout(generateQR, 100);
+                    return;
+                }
+
+                if (typeof QRCode !== 'undefined') {
+                    // Limpiar canvas primero
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    QRCode.toCanvas(canvas, qrUrl, {
+                        width: 128,
+                        margin: 2,
+                        color: {
+                            dark: '#000000',
+                            light: '#FFFFFF'
+                        },
+                        errorCorrectionLevel: 'M'
+                    }, function (error) {
+                        if (error) {
+                            console.error('Error al generar QR:', error);
+                            // Fallback: usar API externa
+                            const container = canvas.parentElement;
+                            canvas.style.display = 'none';
+                            const img = document.createElement('img');
+                            img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
+                            img.alt = 'Código QR para descargar la app';
+                            img.className = 'w-32 h-32';
+                            container.appendChild(img);
+                        } else {
+                            console.log('Código QR generado exitosamente para:', qrUrl);
+                        }
+                    });
+                } else {
+                    // Si la librería no está cargada, usar API externa como fallback
+                    console.log('Librería QRCode no disponible, usando API externa');
+                    const container = canvas.parentElement;
+                    canvas.style.display = 'none';
+                    const img = document.createElement('img');
+                    img.src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrUrl)}`;
+                    img.alt = 'Código QR para descargar la app';
+                    img.className = 'w-32 h-32';
+                    container.appendChild(img);
+                }
+            }
+
+            // Generar QR cuando la página esté lista
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', generateQR);
+            } else {
+                // Esperar un poco más para asegurar que la librería esté cargada
+                setTimeout(generateQR, 500);
+            }
+        })();
+    </script>
+</body>
+</html>
+
+
+
